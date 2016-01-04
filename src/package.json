@@ -1,0 +1,18 @@
+{
+  "name": "skillbrowser",
+  "version": "0.0.1",
+  "description": "RESTFull services for skillbrowser",
+  "main": "index.js",
+  "repository": "",
+  "author": "Baptiste MARIENVAL <baptiste.marienval@gmail.com>",
+  "dependencies": {
+    "async": "~0.2.8",
+    "body-parser": "^1.14.2",
+    "bristol": "^0.3.3",
+    "express": "^4.13.3",
+    "mongoose": "^4.3.4",
+    "nconf": "^0.8.2",
+    "restify": "^4.0.3",
+    "socket.io": "~0.9.14"
+  }
+}

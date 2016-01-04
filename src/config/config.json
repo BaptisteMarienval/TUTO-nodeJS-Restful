@@ -1,0 +1,7 @@
+{
+    "database": {
+        "host": "mongodb://foodmanager:managerfood@ds053972.mongolab.com",
+        "port": 53972,
+        "name": "foodmanager"
+    }
+}
