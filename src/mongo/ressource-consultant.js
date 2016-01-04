@@ -20,8 +20,6 @@ var consultantsSchema = new Schema({
 
 var ConsultantModel = mongoose.model('consultants', consultantsSchema);
 
-//mongoose.connect(config.confDatabase.host+':'+config.confDatabase.port+'/'+config.confDatabase.name);
-
 
 /***********************************
  *** Recuperation d'un consultant ***
@@ -31,12 +29,14 @@ var recupererConsultant = function(id, callback) {
     '_id': id
   }, function(err, reference) {
     if (err) {
-      callback(err, null);
+      callback(400, err, null);
+      log.info(
+        "Une erreur s'est produite lors de la récuperation d'un consultant : " +
+        err)
     } else {
       if (reference) {
-        callback(null, reference);
+        callback(null, reference, null);
       } else {
-        log.info("consultant inconnu");
         callback(404, null, "Consultant Inconnu");
       }
     }
@@ -53,9 +53,12 @@ var supprimerConsultant = function(id, callback) {
     '_id': id
   }, function(err, reference) {
     if (err) {
-      callback(err, null);
+      log.info(
+        "Une erreur s'est produite lors de la suppression d'un consultant : " +
+        err)
+      callback(400, err, null);
     } else {
-      callback(null, null, "Consultant supprimé");
+      callback(204, null, "Consultant supprimé");
     }
   });
 }
@@ -67,15 +70,18 @@ var recupererListeConsultants = function(callback) {
   ConsultantModel.find({}, function(err, references) {
     if (!err) {
       if (references) {
-        callback(null, references);
+        callback(null, references, null);
       } else {
-        callback(404, null);
+        callback(404, null, "La liste des consultants est vide.");
       }
+    } else {
+      log.info(
+        "Une erreur s'est produite lors de la récupération de la liste des consultants : " +
+        err)
+      callback(400, err, null);
     }
   });
 }
-
-
 
 /*********************************************************
  *** Ajout d'une référence dans la liste des références ***
@@ -83,21 +89,28 @@ var recupererListeConsultants = function(callback) {
  **********************************************************/
 var enregistrerConsultant = function(req, callback) {
 
-  var reference = new ConsultantModel({
-    prenom: req.body.prenom,
-    nom: req.body.nom,
-    ville: req.body.ville,
-    email: req.body.email
-  });
 
-  reference.save(function(err) {
-    if (err) {
-      callback(err, null);
-    } else {
-      log.info('Ajout d un consultant dans mongo : ' + reference.prenom);
-      callback(null, reference);
-    }
-  });
+  if (!req.body || !req.body.prenom || !req.body.nom) {
+    callback(400, null, "Les champs nom et prénom sont obligatoires.");
+  } else {
+    var reference = new ConsultantModel({
+      prenom: req.body.prenom,
+      nom: req.body.nom,
+      ville: req.body.ville,
+      email: req.body.email
+    });
+
+    reference.save(function(err) {
+      if (err) {
+        log.info(
+          "Une erreur s'est produite lors de l'enregistrement du consultant : " +
+          err);
+        callback(400, err, null);
+      } else {
+        callback(201, reference, "Consultant crée.");
+      }
+    });
+  }
 }
 
 
@@ -108,40 +121,46 @@ var enregistrerConsultant = function(req, callback) {
  **********************************************************/
 var modifierConsultant = function(req, callback) {
 
-  ConsultantModel.findById(req.params.id, function(err, reference) {
+  if (!req.body || !req.body.prenom || !req.body.nom) {
+    callback(400, null, "Les champs nom et prénom sont obligatoires.");
+  } else {
 
-    if (err) {
-      callback(err, null);
-    } else {
-      if (reference) {
-        reference.prenom = req.body.prenom,
-          reference.nom = req.body.nom,
-          reference.ville = req.body.ville,
-          reference.email = req.body.email
+    ConsultantModel.findById(req.params.id, function(err, reference) {
 
-        reference.save(function(err) {
-          if (err) {
-            callback(err, null);
-          } else {
-            log.info('Modif d un consultant dans mongo : ' +
-              reference.prenom);
-            callback(null, reference);
-          }
-        });
+      if (err) {
+        log.info(
+          "Une erreur s'est produite lors de la modification d'un consultant : " +
+          err);
+        callback(400, err, null);
       } else {
-        callback(404, null)
+        if (reference) {
+          reference.prenom = req.body.prenom;
+          reference.nom = req.body.nom;
+          reference.ville = req.body.ville;
+          reference.email = req.body.email;
+
+          reference.save(function(err) {
+            if (err) {
+              log.info(
+                "Une erreur s'est produite lors de la modification du consultant : " +
+                err)
+              callback(400, err, null);
+            } else {
+              callback(null, reference, "Consultant modifié.");
+            }
+          });
+        } else {
+          callback(404, null, 'Consultant inconnu.')
+        }
       }
-    }
-  });
+    });
+  }
 }
 
 
 // EXPORTS
 exports.recupererConsultant = recupererConsultant;
-exports.enregistrerConsultant =
-  enregistrerConsultant;
-exports.recupererListeConsultants =
-  recupererListeConsultants;
-exports.supprimerConsultant =
-  supprimerConsultant;
+exports.enregistrerConsultant = enregistrerConsultant;
+exports.recupererListeConsultants = recupererListeConsultants;
+exports.supprimerConsultant = supprimerConsultant;
 exports.modifierConsultant = modifierConsultant;

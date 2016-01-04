@@ -1,139 +1,168 @@
+// BASE SETUP
+// =============================================================================
+// call the packages we need
+var express = require('express');
+var bodyParser = require('body-parser');
+var app = express();
+
+
+require('./response');
+
+// configure app
+
+var port = process.env.PORT || 8080; // set our port
+
 var log = require('bristol');
-log.addTarget('console').withFormatter('commonInfoModel');
+log.addTarget('console').withFormatter(
+  'commonInfoModel');
+
+var mongoose = require('mongoose');
+var config = require('./mongo/config');
+mongoose.connect(config.confDatabase
+  .host + ':' + config.confDatabase.port +
+  '/' + config.confDatabase.name,
+  function(err) {
+    if (err) log.error("Connexion à la base de données impossible");
+  });
 
 var consultant = require('./mongo/ressource-consultant');
 var competence = require('./mongo/ressource-competence');
 
-var restify = require('restify'),
-    server = restify.createServer();
-    
-server.use(restify.acceptParser(server.acceptable));
-server.use(restify.queryParser());
-server.use(restify.bodyParser());
-    
-    
-    var mongoose = require('mongoose');
-    var config = require('./mongo/config');
-    mongoose.connect(config.confDatabase.host+':'+config.confDatabase.port+'/'+config.confDatabase.name);
-    
-/**
- * RESSOURCE Consultants
- */
-    
- /** Retourne la liste des consultants  **/
-server.get('/api/consultants', function (req, res) {
-  log.info("GET /api/consultants");
-	consultant.recupererListeConsultants(function(data) {
-	    if (data != null) {
-	        res.json(data);
-	    } else {
-	    	res.writeHead(404, {'Content-Type': 'application/json; charset=utf-8'});
-	    	res.end();
-	    }
-	});
+app.use(bodyParser.urlencoded({
+  extended: false
+}));
+app.use(bodyParser.json());
+
+
+
+// ROUTES FOR OUR API
+// =============================================================================
+// create our router
+var router = express.Router();
+// middleware to use for all requests
+router.use(function(req, res, next) {
+  // do logging
+  log.info(req.method, req.url);
+  next();
 });
-
- /** Retourne les informations d'un consultant  **/
-server.get('/api/consultants/:id', function (req, res) {
-  log.info("GET /api/consultants/"+req.params.id);
-	consultant.recupererConsultant(req.params.id, function(data) {
-	    if (data != null) {
-	        res.json(data);
-	    } else {
-	    	res.writeHead(404, {'Content-Type': 'application/json; charset=utf-8'});
-	    	res.end();
-	    }
-	});
-});
-
- /** Ajoute un consultant  **/
-server.post('/api/consultants', function create(req, res) {
-	log.info("POST /api/consultants");
-	res.header("Access-Control-Allow-Origin", "*");
-  	res.header("Access-Control-Allow-Headers", "X-Requested-With");
-	consultant.enregistrerConsultant(req, function(data) {
-	    if (data != null) {
-	    	res.json(data);
-	    }  else {
-	    	res.writeHead(409, {'Content-Type': 'application/json; charset=utf-8'});
-	    	res.end();
-	    }
-	})
- });
-
- /** Supprime un consultant  **/
-server.del('/api/consultants/:id', function (req, res) {
-  log.info("DELETE /api/consultants/"+req.params.id);
-	consultant.supprimerConsultant(req.params.id, function(data) {
-	    if (data != null) {
-	        res.json(data);
-	    } else {
-	    	res.writeHead(404, {'Content-Type': 'application/json; charset=utf-8'});
-	    	res.end();
-	    }
-	});
+// test route to make sure everything is working (accessed at GET http://localhost:8080/api)
+router.get('/', function(req, res) {
+  res.json({
+    message: 'SkillBrowser API'
+  });
 });
 
 
-/**
- * RESSOURCE Competences
- */
-    
- /** Retourne la liste des competences  **/
-server.get('/api/competences', function (req, res) {
-  log.info("GET /api/competences");
-	competence.recupererListeCompetences(function(data) {
-	    if (data != null) {
-	        res.json(data);
-	    } else {
-	    	res.writeHead(404, {'Content-Type': 'application/json; charset=utf-8'});
-	    	res.end();
-	    }
-	});
+/** route /Consultants */
+router.route('/consultants')
+  .get(function(req, res) {
+    consultant.recupererListeConsultants(function(err, data, msg) {
+      if (err) {
+        res.respond(msg, err);
+      } else {
+        res.respond(data);
+      }
+    });
+  })
+
+.post(function(req, res) {
+  consultant.enregistrerConsultant(req, function(err, data, msg) {
+    if (err) {
+      res.respond(msg, err);
+    } else {
+      res.respond(data);
+    }
+  });
 });
 
- /** Retourne les informations d'une competence  **/
-server.get('/api/competences/:id', function (req, res) {
-  log.info("GET /api/competences/"+req.params.id);
-	competence.recupererCompetence(req.params.id, function(data) {
-	    if (data != null) {
-	        res.json(data);
-	    } else {
-	    	res.writeHead(404, {'Content-Type': 'application/json; charset=utf-8'});
-	    	res.end();
-	    }
-	});
+/** route /Consultants/:id */
+router.route('/consultants/:id')
+  .get(function(req, res) {
+    consultant.recupererConsultant(req.params.id, function(err, data, msg) {
+      if (err) {
+        res.respond(msg, err);
+      } else {
+        res.respond(data);
+      }
+    });
+  })
+
+.put(function(req, res) {
+    consultant.modifierConsultant(req, function(err, data, msg) {
+      if (err) {
+        res.respond(msg, err);
+      } else {
+        res.respond(data);
+      }
+    });
+  })
+  .delete(function(req, res) {
+    consultant.supprimerConsultant(req.params.id, function(err, data, msg) {
+      if (err) {
+        res.respond(msg, err);
+      } else {
+        res.respond(msg);
+      }
+    });
+  });
+
+/** route /competences */
+router.route('/competences')
+  .get(function(req, res) {
+    competence.recupererListeCompetences(function(err, data, msg) {
+      if (err) {
+        res.respond(msg, err);
+      } else {
+        res.respond(data);
+      }
+    });
+  })
+
+.post(function(req, res) {
+  competence.enregistrerCompetence(req, function(err, data, msg) {
+    if (err) {
+      res.respond(msg, err);
+    } else {
+      res.respond(data);
+    }
+  });
 });
 
- /** Ajoute une competence  **/
-server.post('/api/competences', function create(req, res) {
-	log.info("POST /api/competences");
-	res.header("Access-Control-Allow-Origin", "*");
-  	res.header("Access-Control-Allow-Headers", "X-Requested-With");
-	competence.enregistrerCompetence(req, function(data) {
-	    if (data != null) {
-	    	res.json(data);
-	    }  else {
-	    	res.writeHead(409, {'Content-Type': 'application/json; charset=utf-8'});
-	    	res.end();
-	    }
-	})
- });
+/** route /competences/:id */
+router.route('/competences/:id')
+  .get(function(req, res) {
+    competence.recupererCompetence(req.params.id, function(err, data, msg) {
+      if (err) {
+        res.respond(msg, err);
+      } else {
+        res.respond(data);
+      }
+    });
+  })
 
- /** Supprime une competence  **/
-server.del('/api/competences/:id', function (req, res) {
-  log.info("DELETE /api/competences/"+req.params.id);
-	competence.supprimerCompetence(req.params.id, function(data) {
-	    if (data != null) {
-	        res.json(data);
-	    } else {
-	    	res.writeHead(404, {'Content-Type': 'application/json; charset=utf-8'});
-	    	res.end();
-	    }
-	});
-});
+.put(function(req, res) {
+    competence.modifierCompetence(req, function(err, data, msg) {
+      if (err) {
+        res.respond(msg, err);
+      } else {
+        res.respond(data);
+      }
+    });
+  })
+  .delete(function(req, res) {
+    competence.supprimerCompetence(req.params.id, function(err, data, msg) {
+      if (err) {
+        res.respond(msg, err);
+      } else {
+        res.respond(msg);
+      }
+    });
+  });
 
 
-
-server.listen(1337);
-console.log("Server started");
+// REGISTER OUR ROUTES -------------------------------
+app.use('/api', router);
+// START THE SERVER
+// =============================================================================
+app.listen(port);
+log.info('Server is running on port ' + port);
